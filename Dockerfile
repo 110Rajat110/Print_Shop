@@ -2,18 +2,18 @@
 FROM python:3.10-slim
 
 # Install system dependencies needed for pikepdf and MySQL client
-RUN apt-get update && apt-get install -y \\
-    libpoppler-cpp-dev \\
-    pkg-config \\
-    python3-dev \\
-    default-libmysqlclient-dev \\
-    build-essential \\
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y \
+    libpoppler-cpp-dev \
+    pkg-config \
+    python3-dev \
+    default-libmysqlclient-dev \
+    build-essential && \
+    rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
 
-# Copy requirements file and install
+# Copy requirements file and install dependencies
 COPY requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
@@ -24,8 +24,8 @@ COPY . .
 # Create uploads folder with permissions
 RUN mkdir -p uploads
 
-# Expose port 5000 for Flask
+# Expose port 5000 for Flask app
 EXPOSE 5000
 
-# Start Gunicorn server
+# Start the Flask app with Gunicorn
 CMD ["gunicorn", "app:app", "-b", "0.0.0.0:5000"]
