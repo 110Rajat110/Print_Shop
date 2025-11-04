@@ -151,11 +151,12 @@ def dashboard():
         jobs = cursor.fetchall()
         cursor.close()
 
-        # Convert created_at string to formatted date string
+        # Convert created_at string to formatted date string, handle fractional seconds
         jobs_list = []
         for job in jobs:
             job_dict = dict(job)
-            job_dict['created_at'] = datetime.strptime(job_dict['created_at'], '%Y-%m-%d %H:%M:%S').strftime('%d-%m-%Y %H:%M')
+            created_at_str = job_dict['created_at'].split('.')[0]  # strip microseconds if any
+            job_dict['created_at'] = datetime.strptime(created_at_str, '%Y-%m-%d %H:%M:%S').strftime('%d-%m-%Y %H:%M')
             jobs_list.append(job_dict)
 
         return render_template('dashboard.html', jobs=jobs_list)

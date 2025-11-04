@@ -1,36 +1,305 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <title>Admin Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Upload Files - Print Shop</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 </head>
 <body>
-    <h1>Admin Dashboard</h1>
-    <table>
-        <thead>
-            <tr>
-                <th>Batch ID</th>
-                <th>Mobile Number</th>
-                <th>Status</th>
-                <th>Total Cost</th>
-                <th>Created At</th>
-                <th>Files</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for job in jobs %}
-            <tr>
-                <td>{{ job['batch_id'] }}</td>
-                <td>{{ job['mobile_number'] }}</td>
-                <td>{{ job['status'] }}</td>
-                <td>{{ job['total_cost'] }}</td>
-                <td>{{ job['created_at'] }}</td>
-                <td>{{ job['files'] }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="container">
+        <div class="upload-container">
+            <div class="header">
+                <h1>Upload Your Files</h1>
+                <p class="mobile-display">Mobile: <strong>{{ mobile_number }}</strong></p>
+            </div>
+
+            <div class="upload-section">
+                <input type="file" id="fileInput" accept=".pdf" multiple style="display: none;" />
+                <button class="btn btn-upload" onclick="document.getElementById('fileInput').click()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    Upload PDF Files
+                </button>
+                <p class="upload-hint">Select one or more PDF files</p>
+            </div>
+
+            <div id="jobsList"></div>
+
+            <div class="total-section" id="totalSection" style="display: none;">
+                <div class="total-display">
+                    <span>Total Cost:</span>
+                    <span class="total-amount">₹<span id="totalCost">0.00</span></span>
+                </div>
+                <button class="btn btn-primary btn-submit" onclick="submitJob()">Submit Print Job</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="successModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <h2>Success!</h2>
+            <p>Your print job has been submitted successfully.</p>
+            <p class="batch-id">
+                Job ID: <strong id="batchIdDisplay"></strong>
+            </p>
+            <p class="success-message">
+                Please visit the shop with this Job ID to collect your prints and make payment.
+            </p>
+            <button class="btn btn-primary" onclick="location.href='/'">Submit Another Job</button>
+        </div>
+    </div>
+
+    <script>
+        const mobileNumber = "{{ mobile_number }}";
+        let jobs = [];
+        let pricing = {};
+
+        // Fetch pricing on load
+        fetch('/get-pricing')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    pricing = data.pricing;
+                }
+            });
+
+        // File input change handler
+        document.getElementById('fileInput').addEventListener('change', async function(e) {
+            const files = e.target.files;
+            for (let file of files) {
+                await uploadFile(file);
+            }
+            e.target.value = ''; // Reset input
+        });
+
+        async function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/upload-file', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    addJobCard(result);
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Upload failed: ' + error.message);
+            }
+        }
+
+        function addJobCard(fileData) {
+            const jobId = Date.now() + Math.random();
+            const job = {
+                id: jobId,
+                original_name: fileData.original_name,
+                saved_path: fileData.saved_path,
+                page_count_original: fileData.page_count,
+                page_range: 'All',
+                page_count_final: fileData.page_count,
+                copies: 1,
+                print_color: 'B&W',
+                print_duplex: '1-Sided',
+                file_cost: 0
+            };
+
+            jobs.push(job);
+            renderJob(job);
+            calculateCost(job);
+            updateTotal();
+        }
+
+        function renderJob(job) {
+            const jobCard = document.createElement('div');
+            jobCard.className = 'job-card';
+            jobCard.id = `job-${job.id}`;
+            jobCard.innerHTML = `
+                <div class="job-header">
+                    <span class="file-name">${job.original_name}</span>
+                    <button class="btn-icon btn-remove" onclick="removeJob(${job.id})">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div class="job-details">
+                    <p class="page-info">Total Pages: ${job.page_count_original}</p>
+                </div>
+                <div class="job-options">
+                    <div class="form-group">
+                        <label>Page Range</label>
+                        <input type="text" value="${job.page_range}" 
+                            placeholder="e.g., All, 1-5, 1,3,5-8" 
+                            onchange="updateJobField(${job.id}, 'page_range', this.value)">
+                    </div>
+                    <div class="form-group">
+                        <label>Copies</label>
+                        <input type="number" value="${job.copies}" min="1" 
+                            onchange="updateJobField(${job.id}, 'copies', this.value)">
+                    </div>
+                    <div class="form-group">
+                        <label>Color</label>
+                        <select onchange="updateJobField(${job.id}, 'print_color', this.value)">
+                            <option value="B&W">B&W</option>
+                            <option value="Color">Color</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Sides</label>
+                        <select onchange="updateJobField(${job.id}, 'print_duplex', this.value)">
+                            <option value="1-Sided">1-Sided</option>
+                            <option value="2-Sided">2-Sided (Duplex)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="job-footer">
+                    <button class="btn btn-secondary btn-sm" onclick="splitJob(${job.id})">
+                        Split Job (Add Part)
+                    </button>
+                    <span class="job-cost">Cost: ₹<span id="cost-${job.id}">0.00</span></span>
+                </div>
+            `;
+
+            document.getElementById('jobsList').appendChild(jobCard);
+            document.getElementById('totalSection').style.display = 'block';
+        }
+
+        function updateJobField(jobId, field, value) {
+            const job = jobs.find(j => j.id === jobId);
+            if (!job) return;
+
+            if (field === 'page_range') {
+                job.page_range = value;
+                job.page_count_final = calculatePageCount(value, job.page_count_original);
+            } else if (field === 'copies') {
+                job.copies = parseInt(value) || 1;
+            } else {
+                job[field] = value;
+            }
+
+            calculateCost(job);
+            updateTotal();
+        }
+
+        function calculatePageCount(rangeStr, maxPages) {
+            if (rangeStr.toLowerCase() === 'all') return maxPages;
+
+            let count = 0;
+            const parts = rangeStr.split(',');
+
+            for (let part of parts) {
+                part = part.trim();
+                if (part.includes('-')) {
+                    const [start, end] = part.split('-').map(n => parseInt(n.trim()));
+                    if (!isNaN(start) && !isNaN(end) && start <= end && end <= maxPages) {
+                        count += (end - start + 1);
+                    }
+                } else {
+                    const page = parseInt(part);
+                    if (!isNaN(page) && page <= maxPages) {
+                        count += 1;
+                    }
+                }
+            }
+
+            return count;
+        }
+
+        function calculateCost(job) {
+            const pricePerPage = job.print_color === 'Color' ? 
+                pricing.price_per_page_color : pricing.price_per_page_bw;
+            
+            let cost = job.page_count_final * pricePerPage * job.copies;
+
+            if (job.print_duplex === '2-Sided') {
+                cost *= pricing.price_duplex_multiplier;
+            }
+
+            job.file_cost = cost.toFixed(2);
+            document.getElementById(`cost-${job.id}`).textContent = job.file_cost;
+        }
+
+        function updateTotal() {
+            const total = jobs.reduce((sum, job) => sum + parseFloat(job.file_cost), 0);
+            document.getElementById('totalCost').textContent = total.toFixed(2);
+        }
+
+        function removeJob(jobId) {
+            jobs = jobs.filter(j => j.id !== jobId);
+            document.getElementById(`job-${jobId}`).remove();
+            updateTotal();
+
+            if (jobs.length === 0) {
+                document.getElementById('totalSection').style.display = 'none';
+            }
+        }
+
+        function splitJob(jobId) {
+            const originalJob = jobs.find(j => j.id === jobId);
+            if (!originalJob) return;
+
+            const newJob = {
+                id: Date.now() + Math.random(),
+                original_name: originalJob.original_name,
+                saved_path: originalJob.saved_path,
+                page_count_original: originalJob.page_count_original,
+                page_range: 'All',
+                page_count_final: originalJob.page_count_original,
+                copies: 1,
+                print_color: 'B&W',
+                print_duplex: '1-Sided',
+                file_cost: 0
+            };
+
+            jobs.push(newJob);
+            renderJob(newJob);
+            calculateCost(newJob);
+            updateTotal();
+        }
+
+        async function submitJob() {
+            if (jobs.length === 0) {
+                alert('Please upload at least one file');
+                return;
+            }
+
+            const data = {
+                mobile_number: mobileNumber,
+                jobs: jobs
+            };
+
+            try {
+                const response = await fetch('/submit-job', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    document.getElementById('batchIdDisplay').textContent = result.batch_id;
+                    document.getElementById('successModal').style.display = 'flex';
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Submission failed: ' + error.message);
+            }
+        }
+    </script>
 </body>
 </html>
