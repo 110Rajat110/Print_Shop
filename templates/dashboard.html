@@ -1,122 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Print Shop</title>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Admin Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <meta http-equiv="refresh" content="30">
 </head>
 <body>
-    <div class="dashboard-container">
-        <div class="dashboard-header">
-            <h1>Print Shop Dashboard</h1>
-            <p class="refresh-info">Auto-refreshes every 30 seconds</p>
-        </div>
-
-        {% if jobs|length > 0 %}
-        <div class="table-container">
-            <table class="dashboard-table">
-                <thead>
-                    <tr>
-                        <th>Job ID</th>
-                        <th>Mobile Number</th>
-                        <th>Files</th>
-                        <th>Total Cost</th>
-                        <th>Time</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for job in jobs %}
-                    <tr id="job-row-{{ job.batch_id }}">
-                        <td><strong>#{{ job.batch_id }}</strong></td>
-                        <td>{{ job.mobile_number }}</td>
-                        <td class="files-cell">{{ job.files }}</td>
-                        <td>₹{{ "%.2f"|format(job.total_cost) }}</td>
-                        <td>{{ job.created_at.strftime('%I:%M %p') }}</td>
-                        <td>
-                            <span class="status-badge status-{{ job.status.lower() }}">
-                                {{ job.status }}
-                            </span>
-                        </td>
-                        <td class="actions-cell">
-                            {% if job.status == 'Waiting' %}
-                            <button class="btn btn-action btn-print" 
-                                onclick="updateStatus({{ job.batch_id }}, 'Printing')">
-                                Print
-                            </button>
-                            <button class="btn btn-action btn-cancel" 
-                                onclick="updateStatus({{ job.batch_id }}, 'Cancelled')">
-                                Cancel
-                            </button>
-                            {% elif job.status == 'Printing' %}
-                            <button class="btn btn-action btn-done" 
-                                onclick="updateStatus({{ job.batch_id }}, 'Completed')">
-                                Done (Paid)
-                            </button>
-                            <button class="btn btn-action btn-cancel" 
-                                onclick="updateStatus({{ job.batch_id }}, 'Cancelled')">
-                                Cancel
-                            </button>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <div class="empty-state">
-            <svg width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
-                <path d="M2 17l10 5 10-5"></path>
-                <path d="M2 12l10 5 10-5"></path>
-            </svg>
-            <h2>No Active Jobs</h2>
-            <p>All jobs have been completed or there are no pending orders.</p>
-        </div>
-        {% endif %}
-    </div>
-
-    <script>
-        async function updateStatus(batchId, newStatus) {
-            try {
-                const response = await fetch(`/update-job-status/${batchId}/${newStatus}`, {
-                    method: 'POST'
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    if (newStatus === 'Completed' || newStatus === 'Cancelled') {
-                        const row = document.getElementById(`job-row-${batchId}`);
-                        row.style.opacity = '0';
-                        setTimeout(() => {
-                            row.remove();
-                            
-                            const tbody = document.querySelector('.dashboard-table tbody');
-                            if (tbody.children.length === 0) {
-                                location.reload();
-                            }
-                        }, 300);
-                    } else {
-                        location.reload();
-                    }
-                } else {
-                    alert('Error updating status: ' + result.error);
-                }
-            } catch (error) {
-                alert('Failed to update status: ' + error.message);
-            }
-        }
-
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'r' || e.key === 'R') {
-                location.reload();
-            }
-        });
-    </script>
+    <h1>Admin Dashboard</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Batch ID</th>
+                <th>Mobile Number</th>
+                <th>Status</th>
+                <th>Total Cost</th>
+                <th>Created At</th>
+                <th>Files</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for job in jobs %}
+            <tr>
+                <td>{{ job['batch_id'] }}</td>
+                <td>{{ job['mobile_number'] }}</td>
+                <td>{{ job['status'] }}</td>
+                <td>{{ job['total_cost'] }}</td>
+                <td>{{ job['created_at'] }}</td>
+                <td>{{ job['files'] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </body>
 </html>
