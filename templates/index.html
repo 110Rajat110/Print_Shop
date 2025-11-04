@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Print Shop - Home</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="home-card">
+            <div class="logo">
+                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M6 9V2h12v7"></path>
+                    <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"></path>
+                    <path d="M6 14h12v8H6z"></path>
+                </svg>
+            </div>
+            <h1>Welcome to Print Shop</h1>
+            <p class="subtitle">Quick & Easy Printing Service</p>
+            
+            <form method="POST" action="/upload" class="mobile-form">
+                <div class="form-group">
+                    <label for="mobile_number">Enter Your Mobile Number</label>
+                    <input 
+                        type="tel" 
+                        id="mobile_number" 
+                        name="mobile_number" 
+                        placeholder="Enter 10-digit mobile number"
+                        pattern="[0-9]{10}"
+                        maxlength="10"
+                        required
+                    >
+                    <small>This number will be used to identify your order</small>
+                </div>
+                <button type="submit" class="btn btn-primary">Continue to Upload</button>
+            </form>
+
+            <div class="info-section">
+                <h3>How it works</h3>
+                <div class="steps">
+                    <div class="step">
+                        <span class="step-number">1</span>
+                        <p>Enter your mobile number</p>
+                    </div>
+                    <div class="step">
+                        <span class="step-number">2</span>
+                        <p>Upload your PDF files</p>
+                    </div>
+                    <div class="step">
+                        <span class="step-number">3</span>
+                        <p>Configure print options</p>
+                    </div>
+                    <div class="step">
+                        <span class="step-number">4</span>
+                        <p>Submit and collect at shop</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Validate mobile number input
+        document.getElementById('mobile_number').addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+    </script>
+</body>
+</html>
